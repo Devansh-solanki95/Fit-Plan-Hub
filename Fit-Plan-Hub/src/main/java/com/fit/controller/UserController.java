@@ -63,57 +63,57 @@ public class UserController {
     @Autowired
     private FollowerRepository followerRepo;
 	
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponse> login( @RequestBody LoginModel model) {
-
-        Users user = (Users) userService.loadUserByUsername(model.getEmail());
-
-        System.err.println(model.getEmail());
-        // ✅ FIX 1: Null check FIRST
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse(false, "User not found", null));
-        }
-        
-        System.err.println(user);
-
-        String rawPassword = model.getPassword();
-        System.err.println(model.getPassword());
-        
-        System.err.println(user.getPassword());
-        String storedPassword = user.getPassword();
-        
-        System.err.println(storedPassword);
-        
-
-        boolean passwordMatches;
-
-        if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$")) {
-            passwordMatches = passwordEncoder.matches(rawPassword, storedPassword);
-        } else {
-            passwordMatches = rawPassword.equals(storedPassword);
-        }
-
-        if (!passwordMatches) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse(false, "Invalid credentials", null));
-        }
-
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        model.getEmail(),
-                        model.getPassword()
-                )
-        );
-
-        String token = jwtUtils.generateToken(user.getUserId());
-
-        return ResponseEntity.ok(
-                new ApiResponse(true,
-                        "Login Successfully as : " + user.getRole(),
-                        new LoginResponse(token,user.getRole()))
-        );
-    }
+	    @PostMapping("/login")
+	    public ResponseEntity<ApiResponse> login( @RequestBody LoginModel model) {
+	
+	        Users user = (Users) userService.loadUserByUsername(model.getEmail());
+	
+	        System.err.println(model.getEmail());
+	        // ✅ FIX 1: Null check FIRST
+	        if (user == null) {
+	            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+	                    .body(new ApiResponse(false, "User not found", null));
+	        }
+	        
+	        System.err.println(user);
+	
+	        String rawPassword = model.getPassword();
+	        System.err.println(model.getPassword());
+	        
+	        System.err.println(user.getPassword());
+	        String storedPassword = user.getPassword();
+	        
+	        System.err.println(storedPassword);
+	        
+	
+	        boolean passwordMatches;
+	
+	        if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$")) {
+	            passwordMatches = passwordEncoder.matches(rawPassword, storedPassword);
+	        } else {
+	            passwordMatches = rawPassword.equals(storedPassword);
+	        }
+	
+	        if (!passwordMatches) {
+	            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+	                    .body(new ApiResponse(false, "Invalid credentials", null));
+	        }
+	
+	        authenticationManager.authenticate(
+	                new UsernamePasswordAuthenticationToken(
+	                        model.getEmail(),
+	                        model.getPassword()
+	                )
+	        );
+	
+	        String token = jwtUtils.generateToken(user.getUserId());
+	
+	        return ResponseEntity.ok(
+	                new ApiResponse(true,
+	                        "Login Successfully as : " + user.getRole(),
+	                        new LoginResponse(token,user.getRole()))
+	        );
+	    }
 
 	
     @PostMapping("/register")
