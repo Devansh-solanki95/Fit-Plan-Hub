@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,11 +22,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fit.config.JwtUtils;
 import com.fit.entity.FitnessPlan;
+import com.fit.entity.Followers;
 import com.fit.entity.Subscription;
 import com.fit.entity.Users;
 import com.fit.model.LoginModel;
+import com.fit.model.LoginResponse;
 import com.fit.model.UserModel;
 import com.fit.repo.FitnessPlanRepository;
+import com.fit.repo.FollowerRepository;
 import com.fit.repo.SubscriptionRepository;
 import com.fit.repo.UserRepository;
 import com.fit.service.UserService;
@@ -55,6 +59,9 @@ public class UserController {
     
     @Autowired
     private SubscriptionRepository subscriptionRepo;
+    
+    @Autowired
+    private FollowerRepository followerRepo;
 	
     @PostMapping("/login")
     public ResponseEntity<ApiResponse> login( @RequestBody LoginModel model) {
@@ -104,7 +111,7 @@ public class UserController {
         return ResponseEntity.ok(
                 new ApiResponse(true,
                         "Login Successfully as : " + user.getRole(),
-                        token)
+                        new LoginResponse(token,user.getRole()))
         );
     }
 
@@ -165,6 +172,70 @@ public class UserController {
         }
 
         return ResponseEntity.ok(new ApiResponse(true,"FULL PLAN",plan));
+    }
+
+    
+    @PostMapping("/follow/{trainerId}")
+    public ResponseEntity<ApiResponse> followTrainer(
+            @PathVariable Integer trainerId,
+            @RequestHeader("Authorization") String token) {
+
+        int userId = jwtUtils.extractUserID(token.substring(7));
+        Users user = userRepo.findById(userId).orElseThrow();
+        Users trainer = userRepo.findById(trainerId).orElseThrow();
+
+        Followers follow = new Followers();
+        follow.setUser(user);
+        follow.setTrainer(trainer);
+
+        followerRepo.save(follow);
+        return ResponseEntity.ok(new ApiResponse(true,"Trainer followed successfully",follow));
+    }
+
+    
+    @DeleteMapping("/unfollow/{trainerId}")
+    public ResponseEntity<ApiResponse> unfollowTrainer(
+            @PathVariable Integer trainerId,
+            @RequestHeader("Authorization") String token) {
+
+        int userId = jwtUtils.extractUserID(token.substring(7));
+
+        Users user = userRepo.findById(userId).orElseThrow();
+        Users trainer = userRepo.findById(trainerId).orElseThrow();
+
+        Followers follow = followerRepo
+                .findByUserAndTrainer(user, trainer)
+                .orElse(null);
+
+        if (follow == null) {
+            return ResponseEntity.badRequest().body(new ApiResponse( true,"You are not following this trainer",null));
+        }
+
+        followerRepo.delete(follow);
+        return ResponseEntity.ok(new ApiResponse(true,"Unfollowed trainer successfully",null));
+    }
+
+    
+    @GetMapping("/feed")
+    public List<Map<String, Object>> feed(
+            @RequestHeader("Authorization") String token) {
+
+        int userId = jwtUtils.extractUserID(token.substring(7));
+        Users user = userRepo.findById(userId).orElseThrow();
+
+        List<Users> followedTrainers = followerRepo.findTrainersByUser(user);
+
+        List<FitnessPlan> plans = planRepo.findByTrainerIn(followedTrainers);
+
+        return plans.stream().map(plan -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("title", plan.getTitle());
+            map.put("trainer", plan.getTrainer().getName());
+            map.put("price", plan.getPrice());
+            map.put("purchased",
+                    subscriptionRepo.existsByUserAndPlan(user, plan));
+            return map;
+        }).toList();
     }
 
 

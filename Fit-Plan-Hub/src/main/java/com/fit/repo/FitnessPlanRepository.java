@@ -12,4 +12,6 @@ import com.fit.entity.Users;
 public interface FitnessPlanRepository extends JpaRepository<FitnessPlan, Integer> {
 
     List<FitnessPlan> findByTrainer(Users trainer);
+
+	List<FitnessPlan> findByTrainerIn(List<Users> followedTrainers);
 }
